@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import DashboardHeader from '../components/DashboardHeader';
 import { Link } from 'react-router-dom';
 import { Search, ShieldCheck, Upload, AlertTriangle, XCircle, FileVideo } from 'lucide-react';
+import axiosInstance from '../helper/axiosInstance';
 
 const PibDashboard = () => {
     const [activeTab, setActiveTab] = useState('upload'); // 'upload' or 'id'
