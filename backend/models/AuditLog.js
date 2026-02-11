@@ -18,6 +18,10 @@ const auditLogSchema = new mongoose.Schema({
         type: String, // e.g., "VERIFIED", "NOT_FOUND", "MODIFIED" (for verify action)
         required: false,
     },
+    verificationSource: {
+        type: String, // "FILE" or "URL"
+        required: false
+    },
     referenceId: {
         type: String, // Verification ID or Hash
         required: false,

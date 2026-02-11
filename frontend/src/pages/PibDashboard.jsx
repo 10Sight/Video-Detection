@@ -105,11 +105,14 @@ const PibDashboard = () => {
                                             <div>
                                                 <input
                                                     type="url"
-                                                    className="w-full px-4 py-3 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm mb-4"
+                                                    className="w-full px-4 py-3 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm mb-2"
                                                     placeholder="https://example.com/viral-video.mp4"
                                                     value={formData.link || ''}
                                                     onChange={(e) => setFormData(prev => ({ ...prev, link: e.target.value }))}
                                                 />
+                                                <p className="text-xs text-gray-500 mb-4 italic">
+                                                    For accurate verification, use the original (raw) file URL. Transformed or compressed URLs may not match.
+                                                </p>
                                                 {formData.link && (
                                                     <div className="w-full relative rounded-lg overflow-hidden bg-black/5 border border-gray-200" style={{ maxHeight: '200px' }}>
                                                         {formData.link.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
@@ -253,7 +256,8 @@ const PibDashboard = () => {
 
 
                                             <div className="w-full bg-red-50 text-red-800 p-4 rounded-lg text-sm border border-red-100">
-                                                <strong>Warning:</strong> No metadata or hash match was found.
+                                                {verificationResult.message || <strong>Warning:</strong>}
+                                                {!verificationResult.message && " No metadata or hash match was found."}
                                             </div>
                                         </>
                                     )}

@@ -4,17 +4,19 @@ const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios'); // Import axios for URL fetching
 const { uploadToCloudinary } = require('../utils/cloudinary');
 
 // Helper to create audit log
-const createAuditLog = async (actionType, userRole, referenceId, verificationResult, details) => {
+const createAuditLog = async (actionType, userRole, referenceId, verificationResult, details, verificationSource) => {
     try {
         await AuditLog.create({
             actionType,
             userRole,
             referenceId,
             verificationResult,
-            details
+            details,
+            verificationSource
         });
     } catch (err) {
         console.error('Audit Log Error:', err);
@@ -46,6 +48,13 @@ const computeFileHash = (file) => {
             reject(err);
         }
     });
+};
+
+// Helper to compute hash from Buffer (for URL downloads)
+const computeBufferHash = (buffer) => {
+    const hash = crypto.createHash('sha256');
+    hash.update(buffer);
+    return hash.digest('hex');
 };
 
 /* 
@@ -153,7 +162,7 @@ exports.uploadVideo = async (req, res) => {
         console.log('[DEBUG] New video saved:', newVideo.verificationId);
 
         // Audit Log
-        await createAuditLog('UPLOAD', 'Official Authority', verificationId, 'REGISTERED', `Uploaded: ${title} (Source: ${file ? 'File' : 'Link'})`);
+        await createAuditLog('UPLOAD', 'Official Authority', verificationId, 'REGISTERED', `Uploaded: ${title} (Source: ${file ? 'File' : 'Link'})`, file ? 'FILE' : 'URL');
 
         res.status(201).json({
             success: true,
@@ -191,6 +200,7 @@ exports.verifyVideo = async (req, res) => {
         let videoRecord = null;
         let pib_status = 'NOT_FOUND';
         let referenceRef = verificationId;
+        let verificationSource = file ? 'FILE' : (link ? 'URL' : 'ID');
 
         // 1. Check by ID (Explicit)
         if (verificationId) {
@@ -198,22 +208,36 @@ exports.verifyVideo = async (req, res) => {
             videoRecord = await Video.findOne({ verificationId });
         }
 
-        // 2. Check by Link (Mock Logic - DEMO ONLY)
+        // 2. Check by Link (REAL HASH VERIFICATION)
         if (!videoRecord && !file && link) {
-            console.log(`[DEBUG] Checking by Link: ${link}`);
-            // Strategy A: Check if the link matches a stored Cloudinary URL exactly
-            videoRecord = await Video.findOne({ cloudinaryUrl: link });
+            console.log(`[DEBUG] Checking by Link (Download & Hash): ${link}`);
 
-            // Strategy B: Check if the link *contains* a Verification ID (Simulated Trust Signal)
-            if (!videoRecord) {
-                // Regex for UUID v4
-                const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-                const match = link.match(uuidRegex);
-                if (match) {
-                    const extractedId = match[0];
-                    console.log(`[DEBUG] Extracted ID from link: ${extractedId}`);
-                    videoRecord = await Video.findOne({ verificationId: extractedId });
+            try {
+                // Fetch file bytes from URL
+                const response = await axios.get(link, { responseType: 'arraybuffer', timeout: 10000 });
+                console.log(`[DEBUG] Downloaded ${response.data.length} bytes from URL`);
+
+                // Compute hash from downloaded bytes
+                const hash = computeBufferHash(response.data);
+                console.log(`[DEBUG] Computed Hash from URL: ${hash}`);
+
+                // Compare with stored hash
+                videoRecord = await Video.findOne({ hash });
+                referenceRef = hash;
+
+                if (videoRecord) {
+                    console.log('[DEBUG] Record found by URL hash match!');
+                } else {
+                    console.log('[DEBUG] No record found for URL hash.');
+                    // Optional: We could still try the old "Strategy B" (ID in URL) as a fallback hint if needed
+                    // But requirement says "Hash verification confirms file integrity".
+                    // Let's strictly rely on hash for "Verified Official".
                 }
+
+            } catch (downloadError) {
+                console.error('[DEBUG] Failed to download file from URL:', downloadError.message);
+                // Fallback / Error handling for download failure
+                // We might proceed to return NOT_FOUND or handle specifically.
             }
         }
 
@@ -245,7 +269,7 @@ exports.verifyVideo = async (req, res) => {
         if (pib_status !== 'MODIFIED' || !referenceRef) referenceRef = referenceRef || 'UNKNOWN'; // Ensure valid ref
 
         await createAuditLog('VERIFY', 'PIB Fact Check', referenceRef, pib_status,
-            file ? `File: ${file.originalname}` : (link ? `Link: ${link}` : `Manual ID: ${verificationId}`));
+            file ? `File: ${file.originalname}` : (link ? `Link: ${link}` : `Manual ID: ${verificationId}`), verificationSource);
 
         if (pib_status === 'VERIFIED') {
             return res.json({
@@ -265,9 +289,15 @@ exports.verifyVideo = async (req, res) => {
             });
         } else {
             console.log('[DEBUG] Returning NOT_FOUND');
+            // Helper explanation for URL failures
+            let message = 'No Official Record Found';
+            if (verificationSource === 'URL') {
+                message = 'No Official Record Found. Note: Platform-hosted files may be re-encoded or transformed. Hash-based verification requires the original file content.';
+            }
+
             return res.json({
                 status: 'NOT_FOUND',
-                message: 'No Official Record Found'
+                message: message
             });
         }
 
