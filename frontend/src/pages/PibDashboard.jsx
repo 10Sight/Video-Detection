@@ -34,15 +34,15 @@ const PibDashboard = () => {
         }
 
         try {
-            const response = await fetch('http://localhost:5000/api/videos/verify', {
-                method: 'POST',
-                body: data,
+            const response = await axiosInstance.post('/api/videos/verify', data, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
             });
-            const resData = await response.json();
-            setVerificationResult(resData);
+            setVerificationResult(response.data);
         } catch (error) {
             console.error('Verify error:', error);
-            alert('Verification service unreachable');
+            alert('Verification service unreachable: ' + (error.response?.data?.message || error.message));
         } finally {
             setLoading(false);
         }

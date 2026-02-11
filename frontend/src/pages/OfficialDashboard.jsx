@@ -23,6 +23,7 @@ const OfficialDashboard = () => {
         const data = new FormData();
         data.append('title', formData.title);
         data.append('authority', formData.authority);
+
         if (!formData.useLink && file) {
             data.append('videoFile', file);
         } else if (formData.useLink && formData.link) {
@@ -30,20 +31,17 @@ const OfficialDashboard = () => {
         }
 
         try {
-            const response = await fetch('http://localhost:5000/api/videos/upload', {
-                method: 'POST',
-                body: data,
+            const response = await axiosInstance.post('/api/videos/upload', data, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
             });
-            const resData = await response.json();
-
-            if (resData.success) {
-                setResult(resData.data);
-            } else {
-                alert('Upload failed: ' + resData.message);
-            }
+            setResult(response.data.data); // Axios puts the actual response data in .data
+            setFile(null); // Reset file input
+            setFormData(prev => ({ ...prev, title: '', link: '', useLink: false })); // Reset form
         } catch (error) {
-            console.error('Error uploading:', error);
-            alert('Error connecting to server. Ensure backend is running.');
+            console.error('Upload error:', error);
+            alert('Upload failed: ' + (error.response?.data?.message || 'Server Error'));
         } finally {
             setLoading(false);
         }

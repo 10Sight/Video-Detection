@@ -8,7 +8,11 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors());
+// Middleware
+app.use(cors({
+    origin: ['https://video-detection-1-frontend.onrender.com', 'http://localhost:5173'], // Allow deployed frontend and local dev
+    credentials: true
+}));
 app.use(express.json());
 
 // Basic Route

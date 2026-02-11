@@ -17,7 +17,7 @@ A prototype MERN stack application demonstrating a government workflow for verif
     npm install
     npm run dev
     ```
-    *Server runs on http://localhost:5000*
+    *Server runs on https://video-detection-l8aa.onrender.com*
 
 3.  **Setup Frontend**:
     ```bash

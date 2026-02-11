@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import DashboardHeader from '../components/DashboardHeader';
-import { ShieldCheck, Calendar, Building, Hash, Info, ChevronLeft } from 'lucide-react';
+import { ShieldCheck, Calendar, Building, Hash, Info, ChevronLeft, FileVideo } from 'lucide-react';
+import axiosInstance from '../helper/axiosInstance';
 
 const VerificationRecord = () => {
     const { id } = useParams();
@@ -18,11 +19,8 @@ const VerificationRecord = () => {
                 const data = new FormData();
                 data.append('verificationId', id);
 
-                const response = await fetch('http://localhost:5000/api/videos/verify', {
-                    method: 'POST',
-                    body: data
-                });
-                const resData = await response.json();
+                const response = await axiosInstance.post('/api/videos/verify', data);
+                const resData = response.data;
 
                 if (resData.status === 'VERIFIED') {
                     setRecord(resData.data);
@@ -125,8 +123,5 @@ const VerificationRecord = () => {
         </div>
     );
 };
-
-// Need this import since I used it above
-import { FileVideo } from 'lucide-react';
 
 export default VerificationRecord;

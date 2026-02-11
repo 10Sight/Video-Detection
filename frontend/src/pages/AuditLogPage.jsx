@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import DashboardHeader from '../components/DashboardHeader';
 import { FileText, ArrowRight } from 'lucide-react';
+import axiosInstance from '../helper/axiosInstance';
 
 const AuditLogPage = () => {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('http://localhost:5000/api/audit-logs')
-            .then(res => res.json())
-            .then(data => {
-                setLogs(data);
+        axiosInstance.get('/api/audit-logs')
+            .then(res => {
+                setLogs(res.data);
                 setLoading(false);
             })
             .catch(err => {
@@ -67,7 +67,7 @@ const AuditLogPage = () => {
                                                 <td className="px-6 py-4 text-gray-600">
                                                     {log.verificationResult && (
                                                         <span className={`font-semibold mr-2 ${log.verificationResult === 'VERIFIED' ? 'text-green-600' :
-                                                                log.verificationResult === 'NOT_FOUND' ? 'text-red-600' : 'text-gray-800'
+                                                            log.verificationResult === 'NOT_FOUND' ? 'text-red-600' : 'text-gray-800'
                                                             }`}>
                                                             {log.verificationResult}
                                                         </span>
